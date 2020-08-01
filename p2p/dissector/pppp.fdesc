@@ -1,0 +1,607 @@
+# Copyright (c) 2020, Paul A. Marrapese <paul@redprocyon.com>
+# All rights reserved.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS 
+# SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE 
+# AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES 
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, 
+# NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+# OF THIS SOFTWARE.
+
+function bool8 is_pppp_message () {
+  uint8 first_byte;
+  if (first_byte != 0xf1)
+  {
+    return bool8::false;
+  }
+  return bool8::true;
+}
+
+function string uint32le_to_ip (in uint32 val) {
+  return print("%d.%d.%d.%d", val & 0xFF, (val >> 8) & 0xFF, (val >> 16) & 0xFF, (val >> 24) & 0xFF);
+}
+
+function string uint32be_to_ip (in uint32 val) {
+  return print("%d.%d.%d.%d", (val >> 24) & 0xFF, (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF);
+}
+
+function string uint24be_to_api_version (in uint24 val) {
+  return print("%d.%d.%d", (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF);
+}
+
+function string parse_uid () {
+  hide string(8) prefix;
+  hide uint32{byte_order=big_endian} serial;
+  hide string(8) check_code;
+  return print("%s-%06s-%s", prefix, serial, check_code);
+}
+
+function void parse_sockaddr_in_le () {
+  uint16{byte_order=big_endian} family;
+  uint16{byte_order=little_endian} port;
+  uint32{de=uint32le_to_ip(this)} ip;
+  hide raw(8) reserved;
+}
+
+function void parse_sockaddr_in_be () {
+  uint16{byte_order=little_endian} family;
+  uint16{byte_order=big_endian} port;
+  uint32{de=uint32be_to_ip(this)} ip;
+  hide raw(8) reserved;
+}
+
+enum8 T_message_type {
+  MSG_HELLO                     0x00
+  MSG_HELLO_ACK                 0x01
+  MSG_HELLO_TO                  0x02
+  MSG_HELLO_TO_ACK              0x03
+  MSG_QUERY_DID                 0x08
+  MSG_QUERY_DID_ACK             0x09
+  MSG_DEV_LGN                   0x10
+  MSG_DEV_LGN_ACK               0x11
+  MSG_DEV_LGN_CRC               0x12
+  MSG_DEV_LGN_ACK_CRC           0x13
+  MSG_DEV_LGN_KEY               0x14
+  MSG_DEV_LGN_ACK_KEY           0x15  
+  MSG_DEV_ONLINE_REQ            0x18
+  MSG_DEV_ONLINE_REQ_ACK        0x19  
+  MSG_P2P_REQ                   0x20
+  MSG_P2P_REQ_ACK               0x21
+  MSG_LAN_SEARCH                0x30
+  MSG_LAN_NOTIFY                0x31
+  MSG_LAN_NOTIFY_ACK            0x32  
+  MSG_PUNCH_TO                  0x40
+  MSG_PUNCH_PKT                 0x41
+  MSG_PUNCH_PKT_EX              0x41
+  MSG_P2P_RDY                   0x42
+  MSG_P2P_RDY_EX                0x42
+  MSG_P2P_RDY_ACK               0x43
+  MSG_RS_LGN                    0x60
+  MSG_RS_LGN_ACK                0x61
+  MSG_RS_LGN1                   0x62
+  MSG_RS_LGN1_ACK               0x63
+  MSG_LIST_REQ1                 0x67
+  MSG_LIST_REQ                  0x68
+  MSG_LIST_REQ_ACK              0x69
+  MSG_RLY_HELLO                 0x70
+  MSG_RLY_HELLO_ACK             0x71
+  MSG_RLY_PORT                  0x72
+  MSG_RLY_PORT_ACK              0x73
+  MSG_RLY_PORT_KEY              0x74
+  MSG_RLY_PORT_ACK_KEY          0x75  
+  MSG_RLY_BYTE_COUNT            0x78
+  MSG_RLY_REQ                   0x80
+  MSG_RLY_REQ_ACK               0x81
+  MSG_RLY_TO                    0x82
+  MSG_RLY_PKT                   0x83
+  MSG_RLY_RDY                   0x84
+  MSG_RLY_TO_ACK                0x85
+  MSG_RLY_SERVER_REQ            0x87
+  MSG_RLY_SERVER_REQ_ACK        0x87  
+  MSG_SDEV_RUN                  0x90
+  MSG_SDEV_LGN                  0x91
+  MSG_SDEV_LGN_ACK              0x91
+  MSG_SDEV_LGN_CRC              0x92
+  MSG_SDEV_LGN_ACK_CRC          0x92
+  MSG_SDEV_REPORT               0x94
+  MSG_CONNECT_REPORT            0xA0
+  MSG_REPORT_REQ                0xA1
+  MSG_REPORT                    0xA2
+  MSG_DRW                       0xD0
+  MSG_DRW_ACK                   0xD1
+  MSG_PSR                       0xD8
+  MSG_ALIVE                     0xE0
+  MSG_ALIVE_ACK                 0xE1
+  MSG_CLOSE                     0xF0
+  MSG_MGM_DUMP_LOGIN_DID        0xF4
+  MSG_MGM_DUMP_LOGIN_DID_DETAIL 0xF5
+  MSG_MGM_DUMP_LOGIN_DID_1      0xF6
+  MSG_MGM_LOG_CONTROL           0xF7
+  MSG_MGM_REMOTE_MANAGEMENT     0xF8
+}
+
+struct T_message_header {
+  byte_order big_endian;
+  uint8{d=hex} magic_number;
+  T_message_type message_type;
+  uint16 message_size;
+}
+
+struct T_network_address {
+  call parse_sockaddr_in_le ();
+}
+
+struct T_empty_message {
+  T_message_header message_header;
+}
+
+struct T_MSG_HELLO_ACK {
+  T_message_header message_header;
+  T_network_address wan_address;
+}
+
+struct T_MSG_HELLO_TO {
+  T_message_header message_header;
+  T_network_address target_address_1;
+  T_network_address target_address_2;
+}
+
+struct T_MSG_QUERY_DID {
+  T_message_header message_header;
+  string[64] device_name;
+}
+
+struct T_MSG_QUERY_DID_ACK {
+  T_message_header message_header;
+  string(64) device_uid;
+}
+
+struct T_MSG_DEV_LGN {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+  uint8 nat_type;
+  uint24{de=uint24be_to_api_version(this)} api_version;
+  T_network_address local_address;
+}
+
+struct T_MSG_DEV_LGN_ACK {
+  T_message_header message_header;
+  int8 result;
+  uint8 login_interval;
+  hide raw(2) reserved;
+}
+
+struct T_MSG_DEV_LGN_CRC {
+  T_message_header message_header;
+  struct {
+    raw(20) device_uid;
+    raw(1) nat_type;
+    raw(3) api_version;
+    raw(16) local_address;
+  } encrypted_payload;  
+  uint32{d=hex} crc;
+}
+
+struct T_MSG_DEV_LGN_ACK_CRC {
+  T_message_header message_header;
+  struct {
+    raw(1) result;
+    raw(1) login_interval;
+    raw(2) reserved;
+  } encrypted_payload;
+  uint32{d=hex} crc;
+}
+
+struct T_MSG_DEV_LGN_KEY {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+  uint8 nat_type;
+  uint24{de=uint24be_to_api_version(this)} api_version;
+  T_network_address local_address;
+  string(32) nonce;
+  string(32) signature;
+}
+
+struct T_MSG_DEV_LGN_ACK_KEY {
+  T_message_header message_header;
+  int8 result;
+  uint8 login_interval;
+  hide raw(2) reserved;
+}
+
+struct T_MSG_DEV_ONLINE_REQ {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_DEV_ONLINE_REQ_ACK {
+  T_message_header message_header;
+  uint32 last_login_time;
+  uint8 result;
+  hide raw(3) reserved;
+}
+
+struct T_MSG_P2P_REQ {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+  T_network_address local_address;
+}
+
+struct T_MSG_P2P_REQ_ACK {
+  T_message_header message_header;
+  int8 result;
+  uint24{de=uint24be_to_api_version(this)} api_version;
+}
+
+struct T_MSG_LAN_NOTIFY {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_LAN_NOTIFY_ACK {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_PUNCH_TO {
+  T_message_header message_header;
+  T_network_address to_address;
+}
+
+struct T_MSG_PUNCH_PKT {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_PUNCH_PKT_EX {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+  uint24{de=uint24be_to_api_version(this)} api_version;
+  hide raw(1) reserved;
+}
+
+struct T_MSG_P2P_RDY {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_P2P_RDY_EX {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+  uint24{de=uint24be_to_api_version(this)} api_version;
+  hide raw(1) reserved;
+}
+
+struct T_MSG_RS_LGN {
+  T_message_header message_header;
+  var string relay_uid = parse_uid ();
+  uint32 bandwidth;
+  uint32 num_users;
+}
+
+struct T_MSG_RS_LGN_ACK {
+  T_message_header message_header;
+  int8 result;
+  hide raw(3) reserved;
+}
+
+struct T_MSG_RS_LGN1 {
+  T_message_header message_header;
+  var string relay_uid = parse_uid ();
+  uint32 bandwidth;
+  uint32 num_users;
+  T_network_address relay_address;
+}
+
+struct T_MSG_RS_LGN1_ACK {
+  T_message_header message_header;
+  int8 result;
+  hide raw(3) reserved;
+}
+
+struct T_MSG_LIST_REQ1 {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_LIST_REQ_ACK {
+  T_message_header message_header;
+  uint8 num_relays;
+  hide raw(3) reserved;
+  T_network_address[num_relays] relay_address;
+}
+
+struct T_MSG_RLY_PORT_ACK { 
+  T_message_header message_header;
+  uint32{d=hex} magic_word;
+  uint16 port;
+  hide raw(2) reserved;
+}
+
+struct T_MSG_RLY_PORT_KEY {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+  string(32) nonce;
+  string(32) signature;
+}
+
+struct T_MSG_RLY_PORT_ACK_KEY { 
+  T_message_header message_header;
+  uint32{d=hex} magic_word;
+  uint16 port;
+  int8 result;
+  hide raw(1) reserved;
+}
+
+struct T_MSG_RLY_BYTE_COUNT {
+  T_message_header message_header;
+  uint32 num_bytes;
+}
+
+struct T_MSG_RLY_REQ {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+  T_network_address relay_address;
+  uint32{d=hex} magic_word;
+}
+
+struct T_MSG_RLY_REQ_ACK {
+  T_message_header message_header;
+  int8 result;
+  hide raw(3) reserved;
+}
+
+struct T_MSG_RLY_TO {
+  T_message_header message_header;
+  T_network_address relay_address;
+  uint32{d=hex} magic_word;
+}
+
+struct T_MSG_RLY_TO_ACK {
+  T_message_header message_header;
+  uint32{d=hex} magic_word;
+  var string device_uid = parse_uid ();
+  bool8 is_device;
+  bool8 send_packet_result;
+  hide raw(2) reserved;
+}
+
+struct T_MSG_RLY_SERVER_REQ {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_RLY_SERVER_REQ_ACK_relay_address {
+  call parse_sockaddr_in_be ();
+  bool8 is_tcp;
+  bool8 is_superdevice;
+  hide raw(2) reserved;
+}
+
+struct T_MSG_RLY_SERVER_REQ_ACK { 
+  T_message_header message_header;
+  uint8 num_relays;
+  int8 result;
+  hide raw(2) reserved;
+  T_MSG_RLY_SERVER_REQ_ACK_relay_address[num_relays] relay_address;
+}
+
+struct T_MSG_RLY_PKT {
+  T_message_header message_header;
+  uint32{d=hex} magic_word;
+  var string device_uid = parse_uid ();
+  bool8 is_device;
+  hide raw(3) reserved;
+}
+
+struct T_MSG_RLY_RDY {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_SDEV_LGN {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_SDEV_LGN_ACK {
+  T_message_header message_header;
+  T_network_address wan_address;
+}
+
+struct T_MSG_SDEV_LGN_CRC {
+  T_message_header message_header;
+  struct {
+    raw(20) wan_address;
+  } encrypted_payload;
+  uint32{d=hex} crc;
+}
+
+struct T_MSG_SDEV_LGN_ACK_CRC {
+  T_message_header message_header;
+  struct {
+    raw(16) wan_address;
+  } encrypted_payload;
+  uint32{d=hex} crc;
+}
+
+struct T_MSG_SDEV_REPORT {
+  T_message_header message_header;
+  string(24) superdevice_uid;
+  string(24) device_uid;
+  uint8 state;
+  hide raw(3) reserved;
+  string(64) report;
+}
+
+struct T_MSG_CONNECT_REPORT {
+  T_message_header message_header;
+  string(32) device_uid;
+  uint24{de=uint24be_to_api_version(this)} api_version;
+  bool8 is_success;
+  raw(4) result;
+}
+
+struct T_MSG_REPORT_REQ {
+  T_message_header message_header;
+  uint8 report_level;
+  hide raw(3) reserved;
+}
+
+struct T_MSG_REPORT {
+  T_message_header message_header;
+  string(24) device_uid;
+  bool8 is_device;
+  uint8 report_type;
+  uint8 state;
+  uint16 return_code;
+  hide raw(1) reserved;
+  string(30) report;
+}
+
+struct T_MSG_DRW {
+  T_message_header message_header;  
+  struct {
+    uint8{d=hex} magic_number;
+    uint8 channel;
+    uint16 index;
+  } drw_header;
+  raw(message_size - 4) payload;
+}
+
+struct T_MSG_DRW_ACK {
+  T_message_header message_header;
+  struct {
+    uint8{d=hex} magic_number;
+    uint8 channel;
+    uint16 num_ack;
+  } drw_ack_header;
+  uint16[num_ack] ack;
+}
+
+struct T_MSG_PSR {
+  T_message_header message_header;
+  struct {
+    uint8{d=hex} magic_number;
+    uint8 channel;
+    uint16 index;
+  } drw_header;
+  raw(message_size - 4) payload;
+}
+
+struct T_MSG_MGM_DUMP_LOGIN_DID_1 {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+}
+
+struct T_MSG_MGM_LOG_CONTROL {
+  T_message_header message_header;
+  bool8 is_enabled;
+  hide raw(3) reserved;
+}
+
+struct T_MSG_MGM_REMOTE_MANAGEMENT {
+  T_message_header message_header;
+  struct {
+    uint8 magic_number;
+    bool8 is_response;
+    uint8 function_id;
+    int8 result;
+    uint8 packet_index;
+    uint8 num_packets;
+    uint16 payload_size;
+  } management_header;
+  raw(payload_size) payload;
+} 
+
+switch T_msg_switch T_message_type {
+  case T_message_type::MSG_HELLO : T_empty_message "" ;
+  case T_message_type::MSG_HELLO_ACK : T_MSG_HELLO_ACK "" ;
+  case T_message_type::MSG_HELLO_TO : T_MSG_HELLO_TO "" ;
+  case T_message_type::MSG_HELLO_TO_ACK : T_empty_message "" ;
+  case T_message_type::MSG_QUERY_DID : T_MSG_QUERY_DID "" ;
+  case T_message_type::MSG_QUERY_DID_ACK : T_MSG_QUERY_DID_ACK "" ;
+  case T_message_type::MSG_DEV_LGN : T_MSG_DEV_LGN "" ;
+  case T_message_type::MSG_DEV_LGN_ACK : T_MSG_DEV_LGN_ACK "" ;
+  case T_message_type::MSG_DEV_LGN_CRC : T_MSG_DEV_LGN_CRC "" ;
+  case T_message_type::MSG_DEV_LGN_ACK_CRC : T_MSG_DEV_LGN_ACK_CRC "" ;
+  case T_message_type::MSG_DEV_LGN_KEY : T_MSG_DEV_LGN_KEY "" ;
+  case T_message_type::MSG_DEV_LGN_ACK_KEY : T_MSG_DEV_LGN_ACK_KEY "" ;
+  case T_message_type::MSG_DEV_ONLINE_REQ : T_MSG_DEV_ONLINE_REQ "" ;
+  case T_message_type::MSG_DEV_ONLINE_REQ_ACK : T_MSG_DEV_ONLINE_REQ_ACK "" ;
+  case T_message_type::MSG_P2P_REQ : T_MSG_P2P_REQ "" ;
+  case T_message_type::MSG_P2P_REQ_ACK : T_MSG_P2P_REQ_ACK "" ;
+  case T_message_type::MSG_LAN_SEARCH : T_empty_message "" ;
+  case T_message_type::MSG_LAN_NOTIFY : T_MSG_LAN_NOTIFY "" ;
+  case T_message_type::MSG_LAN_NOTIFY_ACK : T_MSG_LAN_NOTIFY_ACK "" ;
+  case T_message_type::MSG_PUNCH_TO : T_MSG_PUNCH_TO "" ;
+  case T_message_type::MSG_PUNCH_PKT : 
+    if (message_size == 24) {
+      T_MSG_PUNCH_PKT_EX "";
+    } else {
+      T_MSG_PUNCH_PKT "";
+    }
+  case T_message_type::MSG_P2P_RDY :
+    if (message_size == 24) {
+      T_MSG_P2P_RDY_EX "";
+    } else {
+      T_MSG_P2P_RDY "";
+    }
+  case T_message_type::MSG_P2P_RDY_ACK : T_empty_message "" ;
+  case T_message_type::MSG_RS_LGN : T_MSG_RS_LGN "" ;
+  case T_message_type::MSG_RS_LGN_ACK : T_MSG_RS_LGN_ACK "" ;
+  case T_message_type::MSG_RS_LGN1 : T_MSG_RS_LGN1 "" ;
+  case T_message_type::MSG_RS_LGN1_ACK : T_MSG_RS_LGN1_ACK "" ;
+  case T_message_type::MSG_LIST_REQ1 : T_MSG_LIST_REQ1 "" ;
+  case T_message_type::MSG_LIST_REQ : T_empty_message "" ;
+  case T_message_type::MSG_LIST_REQ_ACK : T_MSG_LIST_REQ_ACK "" ;
+  case T_message_type::MSG_RLY_HELLO : T_empty_message "" ;
+  case T_message_type::MSG_RLY_HELLO_ACK : T_empty_message "" ;
+  case T_message_type::MSG_RLY_PORT : T_empty_message "" ;
+  case T_message_type::MSG_RLY_PORT_ACK : T_MSG_RLY_PORT_ACK "" ;
+  case T_message_type::MSG_RLY_PORT_KEY : T_MSG_RLY_PORT_KEY "" ;
+  case T_message_type::MSG_RLY_PORT_ACK_KEY : T_MSG_RLY_PORT_ACK_KEY "" ;
+  case T_message_type::MSG_RLY_BYTE_COUNT : T_MSG_RLY_BYTE_COUNT "" ;
+  case T_message_type::MSG_RLY_REQ : T_MSG_RLY_REQ "" ;
+  case T_message_type::MSG_RLY_REQ_ACK : T_MSG_RLY_REQ_ACK "" ;
+  case T_message_type::MSG_RLY_TO : T_MSG_RLY_TO "" ;
+  case T_message_type::MSG_RLY_PKT : T_MSG_RLY_PKT "" ;
+  case T_message_type::MSG_RLY_RDY : T_MSG_RLY_RDY "" ;
+  case T_message_type::MSG_RLY_TO_ACK : T_MSG_RLY_TO_ACK "" ;
+  case T_message_type::MSG_RLY_SERVER_REQ : 
+    if (message_size == 20) {
+      T_MSG_RLY_SERVER_REQ "";
+    } else {
+      T_MSG_RLY_SERVER_REQ_ACK "";
+    }
+  case T_message_type::MSG_SDEV_RUN : T_empty_message "" ;
+  case T_message_type::MSG_SDEV_LGN : 
+    if (message_size == 20) {
+      T_MSG_SDEV_LGN "";
+    } else {
+      T_MSG_SDEV_LGN_ACK "";
+    }
+  case T_message_type::MSG_SDEV_LGN_CRC : 
+    if (message_size == 24) {
+      T_MSG_SDEV_LGN_CRC "";
+    } else {
+      T_MSG_SDEV_LGN_ACK_CRC "";
+    }
+  case T_message_type::MSG_SDEV_REPORT : T_MSG_SDEV_REPORT "" ;
+  case T_message_type::MSG_CONNECT_REPORT : T_MSG_CONNECT_REPORT "" ;
+  case T_message_type::MSG_REPORT_REQ : T_MSG_REPORT_REQ "" ;
+  case T_message_type::MSG_REPORT : T_MSG_REPORT "" ;    
+  case T_message_type::MSG_DRW : T_MSG_DRW "" ;
+  case T_message_type::MSG_DRW_ACK : T_MSG_DRW_ACK "" ;
+  case T_message_type::MSG_ALIVE : T_empty_message "" ;
+  case T_message_type::MSG_ALIVE_ACK : T_empty_message "" ;
+  case T_message_type::MSG_MGM_DUMP_LOGIN_DID : T_empty_message "" ;
+  case T_message_type::MSG_MGM_DUMP_LOGIN_DID_DETAIL : T_empty_message "" ;
+  case T_message_type::MSG_MGM_DUMP_LOGIN_DID_1 : T_MSG_MGM_DUMP_LOGIN_DID_1 "" ;
+  case T_message_type::MSG_MGM_LOG_CONTROL : T_MSG_MGM_LOG_CONTROL "" ;
+  case T_message_type::MSG_MGM_REMOTE_MANAGEMENT : T_MSG_MGM_REMOTE_MANAGEMENT "" ;
+  
+  default :
+    T_message_header message_header;
+    raw(message_size) message;
+}
