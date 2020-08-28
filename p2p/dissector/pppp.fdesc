@@ -593,6 +593,7 @@ switch T_msg_switch T_message_type {
   case T_message_type::MSG_REPORT : T_MSG_REPORT "" ;    
   case T_message_type::MSG_DRW : T_MSG_DRW "" ;
   case T_message_type::MSG_DRW_ACK : T_MSG_DRW_ACK "" ;
+  case T_message_type::MSG_PSR : T_MSG_PSR "" ;
   case T_message_type::MSG_ALIVE : T_empty_message "" ;
   case T_message_type::MSG_ALIVE_ACK : T_empty_message "" ;
   case T_message_type::MSG_MGM_DUMP_LOGIN_DID : T_empty_message "" ;
