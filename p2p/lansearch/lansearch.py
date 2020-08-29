@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 #
 # Copyright (c) 2020, Paul A. Marrapese <paul@redprocyon.com>
 # All rights reserved.
@@ -36,7 +36,7 @@ def fetchLocalIPv4Addresses():
       
     for addr in addrs:
       ip = addr['addr']
-      if ip in ret or ip == '0.0.0.0' or ip == '127.0.0.1' or ip[0:7] == '169.254': continue
+      if ip in ret or ip == '0.0.0.0' or ip[0:3] == '127' or ip[0:7] == '169.254': continue
       ret.append(ip)
     
   return ret
