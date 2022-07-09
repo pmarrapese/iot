@@ -69,21 +69,23 @@ enum8 T_message_type {
   MSG_DEV_LGN_ACK               0x11
   MSG_DEV_LGN_CRC               0x12
   MSG_DEV_LGN_ACK_CRC           0x13
-  MSG_DEV_LGN_KEY               0x14
-  MSG_DEV_LGN_ACK_KEY           0x15  
-  MSG_DEV_ONLINE_REQ            0x18
-  MSG_DEV_ONLINE_REQ_ACK        0x19  
+  MSG_DEV_LGN_KEY               0x14      # Yi
+  MSG_DEV_LGN_ACK_KEY           0x15      # Yi  
+  MSG_DEV_LGN_DSK               0x16      # CS2 V4
+  MSG_DEV_ONLINE_REQ            0x18      # Yi
+  MSG_DEV_ONLINE_REQ_ACK        0x19      # Yi
   MSG_P2P_REQ                   0x20
   MSG_P2P_REQ_ACK               0x21
+  MSG_P2P_REQ_DSK               0x26      # CS2 V4
   MSG_LAN_SEARCH                0x30
-  MSG_LAN_NOTIFY                0x31
-  MSG_LAN_NOTIFY_ACK            0x32  
+  MSG_LAN_NOTIFY                0x31      # Yi
+  MSG_LAN_NOTIFY_ACK            0x32      # Yi
   MSG_PUNCH_TO                  0x40
   MSG_PUNCH_PKT                 0x41
-  MSG_PUNCH_PKT_EX              0x41
+  MSG_PUNCH_PKT_EX              0x41      # Yi
   MSG_P2P_RDY                   0x42
-  MSG_P2P_RDY_EX                0x42
-  MSG_P2P_RDY_ACK               0x43
+  MSG_P2P_RDY_EX                0x42      # Yi
+  MSG_P2P_RDY_ACK               0x43      # Yi
   MSG_RS_LGN                    0x60
   MSG_RS_LGN_ACK                0x61
   MSG_RS_LGN1                   0x62
@@ -91,30 +93,31 @@ enum8 T_message_type {
   MSG_LIST_REQ1                 0x67
   MSG_LIST_REQ                  0x68
   MSG_LIST_REQ_ACK              0x69
+  MSG_LIST_REQ_DSK              0x6A      # CS2 V4
   MSG_RLY_HELLO                 0x70
   MSG_RLY_HELLO_ACK             0x71
   MSG_RLY_PORT                  0x72
   MSG_RLY_PORT_ACK              0x73
-  MSG_RLY_PORT_KEY              0x74
-  MSG_RLY_PORT_ACK_KEY          0x75  
+  MSG_RLY_PORT_KEY              0x74      # Yi
+  MSG_RLY_PORT_ACK_KEY          0x75      # Yi  
   MSG_RLY_BYTE_COUNT            0x78
   MSG_RLY_REQ                   0x80
   MSG_RLY_REQ_ACK               0x81
   MSG_RLY_TO                    0x82
   MSG_RLY_PKT                   0x83
   MSG_RLY_RDY                   0x84
-  MSG_RLY_TO_ACK                0x85
-  MSG_RLY_SERVER_REQ            0x87
-  MSG_RLY_SERVER_REQ_ACK        0x87  
+  MSG_RLY_TO_ACK                0x85      # Yi
+  MSG_RLY_SERVER_REQ            0x87      # Yi
+  MSG_RLY_SERVER_REQ_ACK        0x87      # Yi  
   MSG_SDEV_RUN                  0x90
   MSG_SDEV_LGN                  0x91
   MSG_SDEV_LGN_ACK              0x91
   MSG_SDEV_LGN_CRC              0x92
   MSG_SDEV_LGN_ACK_CRC          0x92
-  MSG_SDEV_REPORT               0x94
-  MSG_CONNECT_REPORT            0xA0
-  MSG_REPORT_REQ                0xA1
-  MSG_REPORT                    0xA2
+  MSG_SDEV_REPORT               0x94      # Yi
+  MSG_CONNECT_REPORT            0xA0      # Yi
+  MSG_REPORT_REQ                0xA1      # Yi
+  MSG_REPORT                    0xA2      # Yi
   MSG_DRW                       0xD0
   MSG_DRW_ACK                   0xD1
   MSG_PSR                       0xD8
@@ -126,6 +129,7 @@ enum8 T_message_type {
   MSG_MGM_DUMP_LOGIN_DID_1      0xF6
   MSG_MGM_LOG_CONTROL           0xF7
   MSG_MGM_REMOTE_MANAGEMENT     0xF8
+  MSG_REPORT_SESSION_READY      0xF9      # CS2 V4
 }
 
 struct T_message_header {
@@ -215,6 +219,18 @@ struct T_MSG_DEV_LGN_ACK_KEY {
   hide raw(2) reserved;
 }
 
+struct T_MSG_DEV_LGN_DSK {
+  T_message_header message_header;
+  struct {
+    raw(20) device_uid;
+    raw(1) nat_type;
+    raw(3) api_version;
+    raw(16) local_address;
+    raw(24) dsk_key;
+  } encrypted_payload;
+  uint32{d=hex} crc;
+}
+
 struct T_MSG_DEV_ONLINE_REQ {
   T_message_header message_header;
   var string device_uid = parse_uid ();
@@ -237,6 +253,15 @@ struct T_MSG_P2P_REQ_ACK {
   T_message_header message_header;
   T_result result;
   uint24{de=uint24be_to_api_version(this)} api_version;
+}
+
+struct T_MSG_P2P_REQ_DSK {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+  T_network_address local_address;
+  int8 nat_type;
+  uint24{de=uint24be_to_api_version(this)} api_version;
+  string(24) dsk_key;
 }
 
 struct T_MSG_LAN_NOTIFY {
@@ -315,6 +340,12 @@ struct T_MSG_LIST_REQ_ACK {
   uint8 num_relays;
   hide raw(3) reserved;
   T_network_address[num_relays] relay_address;
+}
+
+struct T_MSG_LIST_REQ_DSK {
+  T_message_header message_header;
+  var string device_uid = parse_uid ();
+  string(24) dsk_key;
 }
 
 struct T_MSG_RLY_PORT_ACK { 
@@ -518,7 +549,18 @@ struct T_MSG_MGM_REMOTE_MANAGEMENT {
     uint16 payload_size;
   } management_header;
   raw(payload_size) payload;
-} 
+}
+
+struct T_MSG_REPORT_SESSION_READY {
+  T_message_header message_header;
+  struct {
+    raw(20) device_uid;
+    raw(16) unknown;
+    raw(16) local_address;
+    raw(16) wan_address;
+    raw(16) device_address;
+  } encrypted_payload;
+}
 
 switch T_msg_switch T_message_type {
   case T_message_type::MSG_HELLO : T_empty_message "" ;
@@ -533,10 +575,12 @@ switch T_msg_switch T_message_type {
   case T_message_type::MSG_DEV_LGN_ACK_CRC : T_MSG_DEV_LGN_ACK_CRC "" ;
   case T_message_type::MSG_DEV_LGN_KEY : T_MSG_DEV_LGN_KEY "" ;
   case T_message_type::MSG_DEV_LGN_ACK_KEY : T_MSG_DEV_LGN_ACK_KEY "" ;
+  case T_message_type::MSG_DEV_LGN_DSK : T_MSG_DEV_LGN_DSK "" ;
   case T_message_type::MSG_DEV_ONLINE_REQ : T_MSG_DEV_ONLINE_REQ "" ;
   case T_message_type::MSG_DEV_ONLINE_REQ_ACK : T_MSG_DEV_ONLINE_REQ_ACK "" ;
   case T_message_type::MSG_P2P_REQ : T_MSG_P2P_REQ "" ;
   case T_message_type::MSG_P2P_REQ_ACK : T_MSG_P2P_REQ_ACK "" ;
+  case T_message_type::MSG_P2P_REQ_DSK : T_MSG_P2P_REQ_DSK "" ;
   case T_message_type::MSG_LAN_SEARCH : T_empty_message "" ;
   case T_message_type::MSG_LAN_NOTIFY : T_MSG_LAN_NOTIFY "" ;
   case T_message_type::MSG_LAN_NOTIFY_ACK : T_MSG_LAN_NOTIFY_ACK "" ;
@@ -561,6 +605,7 @@ switch T_msg_switch T_message_type {
   case T_message_type::MSG_LIST_REQ1 : T_MSG_LIST_REQ1 "" ;
   case T_message_type::MSG_LIST_REQ : T_empty_message "" ;
   case T_message_type::MSG_LIST_REQ_ACK : T_MSG_LIST_REQ_ACK "" ;
+  case T_message_type::MSG_LIST_REQ_DSK : T_MSG_LIST_REQ_DSK "" ;
   case T_message_type::MSG_RLY_HELLO : T_empty_message "" ;
   case T_message_type::MSG_RLY_HELLO_ACK : T_empty_message "" ;
   case T_message_type::MSG_RLY_PORT : T_empty_message "" ;
@@ -607,6 +652,7 @@ switch T_msg_switch T_message_type {
   case T_message_type::MSG_MGM_DUMP_LOGIN_DID_1 : T_MSG_MGM_DUMP_LOGIN_DID_1 "" ;
   case T_message_type::MSG_MGM_LOG_CONTROL : T_MSG_MGM_LOG_CONTROL "" ;
   case T_message_type::MSG_MGM_REMOTE_MANAGEMENT : T_MSG_MGM_REMOTE_MANAGEMENT "" ;
+  case T_message_type::MSG_REPORT_SESSION_READY : T_MSG_REPORT_SESSION_READY "" ;
   
   default :
     T_message_header message_header;
