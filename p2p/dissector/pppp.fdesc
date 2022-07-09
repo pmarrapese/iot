@@ -50,6 +50,14 @@ function void parse_sockaddr_in_be () {
   hide raw(8) reserved;
 }
 
+enum8 T_result {
+  RESULT_SUCCESS                0x00
+  RESULT_INVALID_UID            0xFF
+  RESULT_DEVICE_OFFLINE         0xFE
+  RESULT_INVALID_PREFIX         0xFD
+  RESULT_INVALID_DSK            0xFC
+}
+
 enum8 T_message_type {
   MSG_HELLO                     0x00
   MSG_HELLO_ACK                 0x01
@@ -166,9 +174,8 @@ struct T_MSG_DEV_LGN {
 
 struct T_MSG_DEV_LGN_ACK {
   T_message_header message_header;
-  int8 result;
-  uint8 login_interval;
-  hide raw(2) reserved;
+  T_result result;
+  hide raw(3) reserved;
 }
 
 struct T_MSG_DEV_LGN_CRC {
@@ -186,8 +193,7 @@ struct T_MSG_DEV_LGN_ACK_CRC {
   T_message_header message_header;
   struct {
     raw(1) result;
-    raw(1) login_interval;
-    raw(2) reserved;
+    raw(3) reserved;
   } encrypted_payload;
   uint32{d=hex} crc;
 }
@@ -217,7 +223,7 @@ struct T_MSG_DEV_ONLINE_REQ {
 struct T_MSG_DEV_ONLINE_REQ_ACK {
   T_message_header message_header;
   uint32 last_login_time;
-  uint8 result;
+  int8 result;
   hide raw(3) reserved;
 }
 
@@ -229,7 +235,7 @@ struct T_MSG_P2P_REQ {
 
 struct T_MSG_P2P_REQ_ACK {
   T_message_header message_header;
-  int8 result;
+  T_result result;
   uint24{de=uint24be_to_api_version(this)} api_version;
 }
 
@@ -281,7 +287,7 @@ struct T_MSG_RS_LGN {
 
 struct T_MSG_RS_LGN_ACK {
   T_message_header message_header;
-  int8 result;
+  T_result result;
   hide raw(3) reserved;
 }
 
@@ -295,7 +301,7 @@ struct T_MSG_RS_LGN1 {
 
 struct T_MSG_RS_LGN1_ACK {
   T_message_header message_header;
-  int8 result;
+  T_result result;
   hide raw(3) reserved;
 }
 
@@ -347,7 +353,7 @@ struct T_MSG_RLY_REQ {
 
 struct T_MSG_RLY_REQ_ACK {
   T_message_header message_header;
-  int8 result;
+  T_result result;
   hide raw(3) reserved;
 }
 
